@@ -1,0 +1,11 @@
+EXPERIMENTAL: Very simple set of procedures doing statistics.
+
+Inspired by Sussman's book on computational classical mechanics [1] and
+Conrad Wolfram's talk on ``How to Teach Kids Real Math'' [2].
+
+[1] http://mitpress.mit.edu/SICM/
+[2] http://www.ted.com/talks/conrad_wolfram_teaching_kids_real_math_with_computers.html
+
+DISCLAIMER
+==========
+Use the content of this repository at YOUR OWN risk.
