@@ -1,135 +1,114 @@
 #lang racket
 
 (require
- "utils.rkt"
- (rename-in racket (sort r:sort)))
+ (except-in racket sort)
+ "std-ops.rkt"
+ "utils.rkt")
 
-(define *std-ops* '())
+(define (make-stat-dataset nums)
+  (define self null)
+  (define cache null)
+  (define sorted-nums null)
+  (define (init)
+    (when (or (null? nums)
+              (null? (cdr nums)))
+       (error "Data set must at least contain two elements:" set))
+    (set! self dispatch-stat-dataset)
+    (set! cache (make-hash))
+    (set! sorted-nums (sort nums))
+    self)
+  
+  (define hash-fail default-hash-fail)
+  
+  (define (cache-ref op)
+    (hash-ref cache (op 'name) hash-fail))
+  (define (cache-set! op val)
+    (hash-set! cache (op 'name) val))
+  
+  (define (run-op op)
+    (define cache-val (cache-ref op))
+    (define (determine-nums)
+      (if (op 'sort-required?) sorted-nums nums))
+    (define val
+      (cond 
+        ((false? cache-val)
+         (let ((computed-val 
+                (apply (op 'compute) 
+                       (list (determine-nums)))))
+           (cache-set! op computed-val)
+           computed-val))
+        (else
+         cache-val)))
+    (show-keyval (op 'name) val))
+  
+  (define (run ops)
+    (for-each run-op ops))
 
-(define (sum nums . op)
-  (apply 
-   + 
-   (map 
-    (if (null? op) id (car op)) 
-    nums)))
+  (define (dispatch-stat-dataset msg)
+    (case msg
+      ((nums) nums)
+      ((run) run)
+      (else
+       (error "Unknown message" msg))))
+  (init))
 
-(define (mean nums)
-  (/ (sum nums) 
-     (length nums)))
+(define (make-stat-operation computer #:sort? [sort? #t])
+  (define self null)
+  (define (init)
+    (set! self operation-dispatcher)
+    self)
+  
+  (define (compute nums)
+    (computer nums))
+  
+  (define (operation-dispatcher msg)
+    (case msg
+      ((compute) compute)
+      ((sort-required?) sort?)
+      ((name) (object-name computer))
+      (else
+       (error "Unknown message" msg))))
+  (init))
 
-(define (variance nums)
-  (define mean-val (mean nums))
-  (define n (- (length nums) 1))
-  (/
-   (sum 
-    nums
-    (λ (x)
-      (sq
-       (- x mean-val))))
-   n))
+(define *sets+* '())
+(define *ops+* '())
 
-(define (quartile nums k)
-  (define len (length nums))
-  (define idx (/ (* k (+ len 1)) 4))
-  (/
-   (+ (list-ref nums (- (floor idx) 1))
-      (list-ref nums (- (ceiling idx) 1)))
-   2))
-
-(define (median nums)
-  (quartile nums 2))
-
-(define (old-median nums)
-  (define len (length nums))
-  (define mid (/ (+ 1 len) 2))
-  (cond
-    ((odd? len)
-     (list-ref nums (- mid 1)))
-    (else
-     (mean
-      (list 
-       (list-ref nums (- (floor mid) 1))
-       (list-ref nums (floor mid)))))))
-
-(define (ad nums proc)
-  (define med (median nums))
-  (proc
+(define (setup ops sets)
+  (set!
+   *ops+*
    (map
-    (λ (x)
-      (abs (- x med)))
-    nums)))
+    (λ (op)
+      (if (list? op)
+          (keyword-apply
+           make-stat-operation
+           (cadr op)
+           (caddr op)
+           (list (car op)))
+          (apply 
+           make-stat-operation 
+           (list op))))
+    ops))
+    
+  (set!
+   *sets+*
+   (map
+    (λ (set)
+      (make-stat-dataset set))
+    sets)))
 
-(define (mad nums)
-  (ad nums median))
-
-(define (mean-ad nums)
-  (ad nums mean))
-
-(define (sample-min nums)
-  (car nums))
-
-(define (sample-max nums)
-  (last nums))
-
-(define (first-quartile nums)
-  (quartile nums 1))
-
-(define (third-quartile nums)
-  (quartile nums 3))
-
-(define (std-dev nums)
-  (sqrt (variance nums)))
-
-(define (mode nums)
-  (define prev-c 0)
-  (define prev-x 0)
-  (define max-count 0)
-  (define max #f)
-  (map
-   (λ (x c)
-     (define val
-       (cond 
-         ((= x prev-x)
-          (let ((new-count (+ prev-c 1)))
-            (when (> new-count max-count)
-              (set! max-count new-count)
-              (set! max x))
-            new-count))
-         (else 1)))
-     (set! prev-x x)
-     (set! prev-c val)
-     val)
-   nums
-   (build-list 
-    (length nums)
-    (λ (_) 1)))
-  max)
-
-(define (sort l)
-  (r:sort l <))
-
-(define (analyze nums ops)
-  (show-line)
-  (show nums)
-  (show-line)
+(define (analyze)
   (for-each
-   (λ (op)
-     (show-keyval (object-name op) (op nums)))
-   ops))
-
-(define (analyze+ sets ops)
-  (for-each 
-   (λ (set) 
-     (analyze (sort set) ops))
-   sets))
-
-(define (setup)
-  (set! 
-   *std-ops* 
-   (list mean median variance mode mad mean-ad std-dev)))
+   (λ (set+)
+     (show-line)
+     (show (set+ 'nums))
+     (show-line)
+     ((set+ 'run) *ops+*))
+   *sets+*))
 
 (define rain '(69.8 72.4 59.3 67.6 72.4))
 (define rain- (cons 73.2 rain))
+(define mice '(6.3 5.9 7.0 6.9 5.9))
+(define mice- (cons 10.2 mice))
 (define mosquitoes '(1.43 1.16 1.51))
 (define mosquitoes-
   (map 
@@ -137,10 +116,18 @@
      (* (- x 1) 100))
    mosquitoes))
 
-(define sets
-  (list
-   rain rain- mosquitoes mosquitoes-))
+(setup
+ (list 
+  mean median variance mode mean-ad std-dev
+  (list mad '(#:sort?) '(#f))
+  first-quartile third-quartile sample-min sample-max)
+ (list
+  rain
+  rain-
+  mice
+  mice-
+  mosquitoes 
+  mosquitoes-
+  ))
 
-(setup)
-(analyze+ sets *std-ops*)
- 
+(analyze)

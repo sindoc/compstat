@@ -1,6 +1,14 @@
 #lang racket
 
+(require
+ (rename-in racket (sort r:sort)))
+
 (provide (all-defined-out))
+
+(define (sort l)
+  (r:sort l <))
+
+(define (default-hash-fail) #f)
 
 (define show
   (λ stuff
