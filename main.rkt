@@ -1,12 +1,16 @@
 #lang racket
 
 (require
- (except-in racket sort)
  "wrappers.rkt"
- "std-ops.rkt"
  "utils.rkt")
 
+(provide (all-defined-out))
+
+;; The collection of sample data sets to be analyzed
 (define *sets+* '())
+
+;; The collection of statistical operations to be
+;; performed on sample data sets
 (define *ops+* '())
 
 (define (setup ops sets)
@@ -39,30 +43,3 @@
      (show-line)
      ((set+ 'run) *ops+*))
    *sets+*))
-
-(define rain '(69.8 72.4 59.3 67.6 72.4))
-(define rain- (cons 73.2 rain))
-(define mice '(6.3 5.9 7.0 6.9 5.9))
-(define mice- (cons 10.2 mice))
-(define mosquitoes '(1.43 1.16 1.51))
-(define mosquitoes-
-  (map 
-   (λ (x)
-     (* (- x 1) 100))
-   mosquitoes))
-
-(setup
- (list 
-  mean median variance mode mean-ad std-dev
-  (list mad '(#:sort?) '(#f))
-  first-quartile third-quartile sample-min sample-max)
- (list
-  rain
-  rain-
-  mice
-  mice-
-  mosquitoes 
-  mosquitoes-
-  ))
-
-(analyze)
