@@ -8,8 +8,6 @@
 (define (sort l)
   (r:sort l <))
 
-(define (default-hash-fail) #f)
-
 (define show
   (λ stuff
     (map
